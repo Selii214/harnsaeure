@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Gicht-Protokoll</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#1c2230;--s3:#232d3f;
+  --border:#2d3748;--text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;
+  --good:#34d399;--warn:#f59e0b;--bad:#f87171;
+  --acc:#7c3aed;--acc2:#a78bfa;--acc3:#2d1b69;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;max-width:480px;margin:0 auto;padding-bottom:100px;min-height:100vh}
+#hdr{padding:16px 16px 0}
+#hdr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.app-title{font-size:18px;font-weight:800;color:#fff}
+.app-title span{color:var(--acc2)}
+#last-badge{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:6px 12px;text-align:right;display:none}
+#last-badge .val{font-size:20px;font-weight:800;letter-spacing:-1px}
+#last-badge .ldate{font-size:10px;color:var(--muted2)}
+nav{display:flex;background:var(--s1);border-radius:10px 10px 0 0;overflow:hidden;border:1px solid var(--border);border-bottom:none}
+nav button{flex:1;padding:10px 4px;border:none;background:transparent;color:var(--muted2);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;position:relative}
+nav button.active{background:var(--s2);color:#fff}
+nav button.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--acc2);border-radius:2px 2px 0 0}
+.view{display:none;padding:14px 14px 0}
+.view.active{display:block}
+.card{background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
+.card-title{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sub{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:10px 0 6px;display:block}
+input[type=number],input[type=date],textarea{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:#fff;font-size:15px;outline:none;font-family:inherit;font-weight:500}
+input:focus,textarea:focus{border-color:var(--acc2)}
+#val-in{font-size:32px;font-weight:800;text-align:center;letter-spacing:-1.5px;padding:12px}
+#val-hint{text-align:center;font-size:13px;font-weight:700;margin-top:4px;min-height:18px}
+#val-sub{text-align:center;font-size:11px;color:var(--muted);margin-top:2px}
+textarea{resize:vertical;min-height:56px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:13px;cursor:pointer;font-weight:500;transition:all .12s}
+.chip.on    {border-color:var(--acc2);background:var(--acc3);color:var(--acc2);font-weight:700}
+.chip.on-g  {border-color:var(--good);background:#064e3b44;color:var(--good);font-weight:700}
+.chip.on-w  {border-color:var(--warn);background:#78350f44;color:var(--warn);font-weight:700}
+.chip.on-bad{border-color:var(--bad);background:#7f1d1d44;color:var(--bad);font-weight:700}
+.tog-row{display:flex;justify-content:space-between;align-items:center}
+.tog-info .tname{font-size:15px;font-weight:700;color:#fff}
+.tog-info .thint{font-size:12px;color:var(--muted2);margin-top:2px}
+.tog{width:50px;height:26px;border-radius:13px;border:none;background:var(--border);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.tog.on{background:var(--good)}
+.tog-k{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s;pointer-events:none}
+.tog.on .tog-k{left:27px}
+#allo-warn{margin-top:8px;font-size:12px;color:var(--warn);background:#78350f22;border-radius:6px;padding:6px 10px;display:none}
+.inp-row{display:flex;gap:8px;align-items:flex-end}
+.inp-col{flex:1}
+.inp-sep{font-size:20px;font-weight:700;color:var(--muted);padding-bottom:10px;flex-shrink:0}
+.hint-line{font-size:12px;font-weight:700;margin-top:5px;min-height:16px}
+#walk-box{display:none;margin-top:10px;background:var(--s3);border-radius:8px;padding:10px}
+#walk-result{margin-top:8px;font-size:12px;color:var(--muted2);display:none}
+#walk-result .wr{display:flex;justify-content:space-between;padding:3px 0}
+#walk-result .wv{font-weight:700;color:var(--text)}
+#save-btn{width:100%;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-top:8px}
+#cancel-btn{width:100%;padding:10px;background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;display:none}
+#saved-ok{text-align:center;color:var(--good);font-size:13px;margin-top:6px;font-weight:700;min-height:18px}
+#draft-ok{text-align:center;font-size:11px;color:var(--muted);margin-top:3px;min-height:16px;opacity:0;transition:opacity .4s}
+.hi{background:var(--s2);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
+.hi-dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex-shrink:0}
+.hi-body{flex:1;min-width:0}
+.hi-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hi-val{font-size:19px;font-weight:800}
+.hi-unit{font-size:11px;font-weight:400;color:var(--muted)}
+.hi-date{font-size:13px;color:#fff;font-weight:700;white-space:nowrap;background:var(--s3);padding:3px 8px;border-radius:6px;border:1px solid var(--border)}
+.hi-tags{font-size:12px;color:var(--muted2);margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 8px}
+.hi-note{font-size:13px;color:#e2e8f0;margin-top:6px;font-style:normal;background:var(--s3);border-left:3px solid var(--acc2);border-radius:0 6px 6px 0;padding:6px 10px;font-weight:500}
+.hi-btns{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.hi-btns button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;color:var(--muted2)}
+.hi-btns .del{color:var(--bad)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .eico{font-size:38px;margin-bottom:10px}
+.empty .etit{font-size:16px;font-weight:700;color:var(--muted2)}
+.empty .esub{font-size:13px;margin-top:5px}
+.st-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.st-row:last-child{border-bottom:none}
+.big3{display:flex;gap:6px;margin-top:10px}
+.b3{flex:1;text-align:center;background:var(--s3);border-radius:8px;padding:10px 4px}
+.b3n{font-size:30px;font-weight:800;letter-spacing:-1.5px}
+.b3l{font-size:11px;color:var(--muted2);margin-top:2px;font-weight:600}
+.prog-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.prog-bar{flex:1;height:7px;background:var(--s3);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .4s}
+.prog-pct{font-size:17px;font-weight:800;min-width:38px;text-align:right}
+.prog-sub{font-size:12px;color:var(--muted2);margin-top:4px}
+.spark-svg{display:block;width:100%;margin:4px 0}
+.tool-btn{width:100%;padding:12px;background:var(--s1);border:1px solid var(--border);border-radius:10px;color:var(--acc2);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
+#exp-box{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:none}
+#exp-txt{width:100%;background:transparent;border:none;color:var(--text);font-size:11px;font-family:monospace;resize:none;outline:none;min-height:100px}
+.copy-btn{width:100%;padding:10px;background:var(--acc);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-top:8px}
+.copy-ok{text-align:center;color:var(--good);font-size:13px;font-weight:600;margin-top:5px;min-height:18px}
+.btn-row{display:flex;gap:8px;margin-bottom:8px}
+.btn-row .tool-btn{margin-bottom:0}
+#bkp-msg{text-align:center;font-size:13px;font-weight:600;min-height:18px;margin-bottom:6px}
+.footer{text-align:center;font-size:11px;color:var(--muted);padding:10px 0 4px}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <div id="hdr-top">
+    <div class="app-title">Gicht<span>Protokoll</span></div>
+    <div id="last-badge"><div id="last-num" class="val"></div><div id="last-dt" class="ldate"></div></div>
+  </div>
+  <nav>
+    <button class="active" onclick="showView('log')">Messen</button>
+    <button onclick="showView('history')">Verlauf</button>
+    <button onclick="showView('stats')">Statistik</button>
+  </nav>
+</div>
+
+<div id="view-log" class="view active">
+  <div class="card">
+    <div class="card-title">🩸 Harnsäure (mg/dl)</div>
+    <input id="val-in" type="number" step="0.1" min="2" max="12" placeholder="– optional –" oninput="onValIn();sched()">
+    <div id="val-hint"></div>
+    <div id="val-sub">Optional · Ziel ≤ 6,0 mg/dl · Nüchtern messen</div>
+    <div style="margin-top:12px"><span class="sub">Datum</span><input id="date-in" type="date" onchange="st.date=this.value;sched();"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏃 Aktivität</div>
+    <div class="chips" id="act-chips">
+      <button class="chip on"  onclick="setAct('Ruhetag')">Ruhetag</button>
+      <button class="chip"     onclick="setAct('Training')">Training</button>
+      <button class="chip"     onclick="setAct('Gartenarbeit')">Gartenarbeit</button>
+      <button class="chip"     onclick="setAct('Training + Garten')">Training + Garten</button>
+      <button class="chip"     onclick="setAct('Spaziergang')">Spaziergang</button>
+      <button class="chip"     onclick="setAct('Wandern')">Wandern</button>
+    </div>
+
+    <div id="int-sec" style="display:none;margin-top:10px">
+      <span class="sub">Intensität</span>
+      <div class="chips">
+        <button class="chip" onclick="setInt('Leicht')">Leicht</button>
+        <button class="chip" onclick="setInt('Mittel')">Mittel</button>
+        <button class="chip" onclick="setInt('Intensiv')">Intensiv</button>
+      </div>
+      <span class="sub">Dauer</span>
+      <div class="chips">
+        <button class="chip" onclick="setDur('< 30 min')">&lt; 30 min</button>
+        <button class="chip" onclick="setDur('30–60 min')">30–60 min</button>
+        <button class="chip" onclick="setDur('60–90 min')">60–90 min</button>
+        <button class="chip" onclick="setDur('> 90 min')">&gt; 90 min</button>
+      </div>
+    </div>
+
+    <div id="grd-sec" style="display:none;margin-top:10px">
+      <span class="sub">Garten – Dauer</span>
+      <div class="chips">
+        <button class="chip" onclick="setGdur('< 30 min')">&lt; 30 min</button>
+        <button class="chip" onclick="setGdur('30–60 min')">30–60 min</button>
+        <button class="chip" onclick="setGdur('1–2 h')">1–2 h</button>
+        <button class="chip" onclick="setGdur('> 2 h')">&gt; 2 h</button>
+      </div>
+      <span class="sub">Anstrengung</span>
+      <div class="chips">
+        <button class="chip" onclick="setGex('Leicht')">Leicht</button>
+        <button class="chip" onclick="setGex('Mittel')">Mittel</button>
+        <button class="chip" onclick="setGex('Anstrengend')">Anstrengend</button>
+      </div>
+    </div>
+
+    <div id="walk-box">
+      <span class="sub" style="margin-top:0">Kilometer &amp; Höhenmeter</span>
+      <div class="inp-row">
+        <div class="inp-col">
+          <span class="sub" style="margin-top:0">Kilometer</span>
+          <input id="km-in" type="number" step="0.1" min="0" max="200" placeholder="z.B. 8.5" oninput="calcWalk();sched()">
+        </div>
+        <div class="inp-col">
+          <span class="sub" style="margin-top:0">Höhenmeter (opt.)</span>
+          <input id="hm-in" type="number" step="10" min="0" max="5000" placeholder="z.B. 350" oninput="calcWalk();sched()">
+        </div>
+      </div>
+      <div id="walk-result">
+        <div class="wr"><span>Belastung</span><span class="wv" id="wc-load">–</span></div>
+        <div class="wr"><span>Kcal (ca.)</span><span class="wv" id="wc-kcal">–</span></div>
+        <div class="wr"><span>Gicht-Einfluss</span><span class="wv" id="wc-gicht">–</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠️ Einflussfaktoren</div>
+    <div class="chips" id="fac-chips">
+      <button class="chip" onclick="togFac(this,'Purinreiche Mahlzeit')">Purinreiche Mahlzeit</button>
+      <button class="chip" onclick="togFac(this,'Alkohol')">Alkohol</button>
+      <button class="chip" onclick="togFac(this,'Stress')">Stress</button>
+      <button class="chip" onclick="togFac(this,'Schlechter Schlaf')">Schlechter Schlaf</button>
+      <button class="chip" onclick="togFac(this,'Medikament vergessen')">Medikament vergessen</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💧 Trinkmenge</div>
+    <div class="chips">
+      <button class="chip" onclick="setH2o(this,'&lt; 1,5 L')">&lt; 1,5 L</button>
+      <button class="chip" onclick="setH2o(this,'1,5–2 L')">1,5–2 L</button>
+      <button class="chip" onclick="setH2o(this,'2–3 L')">2–3 L</button>
+      <button class="chip" onclick="setH2o(this,'&gt; 3 L')">&gt; 3 L</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💊 Tägliche Medikation</div>
+    <div class="tog-row">
+      <div class="tog-info">
+        <div class="tname">Allopurinol 150 mg</div>
+        <div class="thint">Heute eingenommen?</div>
+      </div>
+      <button class="tog on" id="allo-tog" onclick="togAllo()"><span class="tog-k"></span></button>
+    </div>
+    <div id="allo-warn">⚠ Vergessene Dosis kann Harnsäurewert erhöhen</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🩺 Blutdruck &amp; Puls <span style="font-weight:400;font-size:10px;color:var(--muted)">(optional)</span></div>
+    <div class="inp-row">
+      <div class="inp-col"><span class="sub">Systolisch</span><input id="bp-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP();sched()"></div>
+      <div class="inp-sep">/</div>
+      <div class="inp-col"><span class="sub">Diastolisch</span><input id="bp-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP();sched()"></div>
+      <div class="inp-col"><span class="sub">Puls /min</span><input id="bp-p" type="number" min="30" max="220" placeholder="z.B. 72" oninput="sched()"></div>
+    </div>
+    <div id="bp-hint" class="hint-line"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧪 Blutbildwerte <span style="font-weight:400;font-size:10px;color:var(--muted)">(optional)</span></div>
+    <div class="inp-row">
+      <div class="inp-col"><span class="sub">Kreatinin (mg/dl)</span><input id="krea-in" type="number" step="0.01" min="0.1" max="20" placeholder="z.B. 1.0" oninput="onKrea();sched()"></div>
+      <div class="inp-col"><span class="sub">eGFR (ml/min)</span><input id="egfr-in" type="number" step="1" min="1" max="150" placeholder="z.B. 75" oninput="onEgfr();sched()"></div>
+    </div>
+    <div id="krea-hint" class="hint-line"></div>
+    <div id="egfr-hint" class="hint-line"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 Notiz</div>
+    <textarea id="note-in" placeholder="Besonderheiten, Symptome, Bemerkungen…" oninput="sched()"></textarea>
+  </div>
+
+  <button id="save-btn" onclick="saveEntry()">Eintrag speichern</button>
+  <button id="cancel-btn" onclick="cancelEdit()">Abbrechen</button>
+  <div id="saved-ok"></div>
+  <div id="draft-ok"></div>
+  <div id="db-info" style="text-align:center;font-size:11px;color:var(--warn);margin-top:4px;min-height:14px"></div>
+</div>
+
+<div id="view-history" class="view"><div id="hist-content"></div></div>
+
+<div id="view-stats" class="view">
+  <div id="stats-content"></div>
+  <button class="tool-btn" onclick="togExp()">📤 Daten exportieren (für Claude-Auswertung)</button>
+  <div id="exp-box">
+    <span class="sub">Text kopieren und in Claude einfügen</span>
+    <textarea id="exp-txt" readonly></textarea>
+    <button class="copy-btn" onclick="copyExp()">In Zwischenablage kopieren</button>
+    <div class="copy-ok" id="copy-ok"></div>
+  </div>
+  <div class="btn-row">
+    <button class="tool-btn" onclick="doBackup()">💾 Backup speichern</button>
+    <button class="tool-btn" onclick="document.getElementById('restore-in').click()">📂 Backup laden</button>
+  </div>
+  <input type="file" id="restore-in" accept=".json,application/json,text/json,text/plain,*/*" style="display:none" onchange="doRestore(event)">
+  <div id="bkp-msg"></div>
+  <div class="footer">Alle Daten werden lokal auf deinem Gerät gespeichert.</div>
+</div>
+
+<script>
+const TARGET=6.0;
+const G='#34d399',W='#f59e0b',B='#f87171',MU='#64748b',AC='#a78bfa';
+
+// ── State ──────────────────────────────────────────────────────────────────
+var st={act:'Ruhetag',int:'',dur:'',gdur:'',gex:'',facs:[],h2o:'',allo:true,editId:null,date:''};
+var h2oBtn=null;
+
+// ── Storage ────────────────────────────────────────────────────────────────
+// ── IndexedDB Storage ─────────────────────────────────────────────────────
+var _mem={entries:[],draft:null};
+var _db=null;
+
+function initDB(callback){
+  if(_db){callback();return;}
+  var req=indexedDB.open('GichtProtokoll',1);
+  req.onupgradeneeded=function(e){
+    var db=e.target.result;
+    if(!db.objectStoreNames.contains('entries')) db.createObjectStore('entries',{keyPath:'id'});
+    if(!db.objectStoreNames.contains('meta'))    db.createObjectStore('meta');
+  };
+  req.onsuccess=function(e){_db=e.target.result;callback();};
+  req.onerror=function(){console.warn('IndexedDB nicht verfügbar');callback();};
+}
+
+function getEntries(){return _mem.entries;}
+
+function setEntries(a){
+  _mem.entries=a;
+  if(!_db)return;
+  var tx=_db.transaction('entries','readwrite');
+  var store=tx.objectStore('entries');
+  store.clear();
+  a.forEach(function(e){store.put(e);});
+}
+
+function getDraft(){return _mem.draft;}
+
+function setDraft(d){
+  _mem.draft=d;
+  if(!_db)return;
+  var tx=_db.transaction('meta','readwrite');
+  tx.objectStore('meta').put(d===null?null:d,'draft');
+}
+
+function loadFromDB(callback){
+  if(!_db){callback();return;}
+  // Load entries
+  var tx=_db.transaction('entries','readonly');
+  var req=tx.objectStore('entries').getAll();
+  req.onsuccess=function(e){
+    _mem.entries=e.target.result||[];
+    // Load draft
+    var tx2=_db.transaction('meta','readonly');
+    var req2=tx2.objectStore('meta').get('draft');
+    req2.onsuccess=function(e2){
+      _mem.draft=e2.target.result||null;
+      callback();
+    };
+    req2.onerror=function(){callback();};
+  };
+  req.onerror=function(){callback();};
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function $(id){return document.getElementById(id);}
+function today(){return new Date().toISOString().slice(0,10);}
+function fmtDate(iso){if(!iso)return'';return new Date(iso).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});}
+function vCol(v){if(v==null)return MU;if(v<=TARGET)return G;if(v<=7)return W;return B;}
+function vLbl(v){if(v==null)return'–';if(v<=TARGET)return'Zielbereich ✓';if(v<=7)return'Grenzwertig';return'Erhöht';}
+
+// ── Aktivität ──────────────────────────────────────────────────────────────
+function setAct(v){
+  st.act=v; st.int=''; st.dur=''; st.gdur=''; st.gex='';
+  // Chips updaten
+  var chips=$('act-chips').querySelectorAll('.chip');
+  var acts=['Ruhetag','Training','Gartenarbeit','Training + Garten','Spaziergang','Wandern'];
+  for(var i=0;i<chips.length;i++) chips[i].className='chip'+(acts[i]===v?' on':'');
+  // Sektionen
+  var needI=(v==='Training'||v==='Training + Garten');
+  var needG=(v==='Gartenarbeit'||v==='Training + Garten');
+  var needW=(v==='Spaziergang'||v==='Wandern');
+  $('int-sec').style.display=needI?'block':'none';
+  $('grd-sec').style.display=needG?'block':'none';
+  $('walk-box').style.display=needW?'block':'none';
+  if(!needW){$('km-in').value='';$('hm-in').value='';$('walk-result').style.display='none';}
+  // Int/Dur chips zurücksetzen
+  if(!needI){
+    var ic=$('int-sec').querySelectorAll('.chip');
+    for(var j=0;j<ic.length;j++) ic[j].className='chip';
+    st.int=''; st.dur='';
+  }
+  if(!needG){
+    var gc=$('grd-sec').querySelectorAll('.chip');
+    for(var k=0;k<gc.length;k++) gc[k].className='chip';
+    st.gdur=''; st.gex='';
+  }
+  sched();
+}
+
+function setInt(v){
+  st.int=v;
+  var chips=$('int-sec').querySelectorAll('.chip');
+  var vals=['Leicht','Mittel','Intensiv'];
+  for(var i=0;i<3;i++) chips[i].className='chip'+(vals[i]===v?' on':'');
+  sched();
+}
+function setDur(v){
+  st.dur=v;
+  var chips=$('int-sec').querySelectorAll('.chip');
+  var vals=['< 30 min','30–60 min','60–90 min','> 90 min'];
+  for(var i=0;i<4;i++) chips[i+3].className='chip'+(vals[i]===v?' on':'');
+  sched();
+}
+function setGdur(v){
+  st.gdur=v;
+  var chips=$('grd-sec').querySelectorAll('.chip');
+  var vals=['< 30 min','30–60 min','1–2 h','> 2 h'];
+  for(var i=0;i<4;i++) chips[i].className='chip'+(vals[i]===v?' on':'');
+  sched();
+}
+function setGex(v){
+  st.gex=v;
+  var chips=$('grd-sec').querySelectorAll('.chip');
+  var vals=['Leicht','Mittel','Anstrengend'];
+  for(var i=0;i<3;i++) chips[i+4].className='chip'+(vals[i]===v?' on':'');
+  sched();
+}
+function togFac(btn,v){
+  var idx=st.facs.indexOf(v);
+  if(idx>=0){st.facs.splice(idx,1);btn.className='chip';}
+  else{st.facs.push(v);btn.className='chip on-w';}
+  sched();
+}
+function setH2o(btn,v){
+  if(h2oBtn) h2oBtn.className='chip';
+  st.h2o=v; h2oBtn=btn;
+  var cls=v==='< 1,5 L'?'on-bad':v==='1,5–2 L'?'on-w':'on-g';
+  btn.className='chip '+cls;
+  sched();
+}
+function togAllo(){
+  st.allo=!st.allo;
+  $('allo-tog').className='tog'+(st.allo?' on':'');
+  $('allo-warn').style.display=st.allo?'none':'block';
+  sched();
+}
+
+// ── Eingabe-Feedback ───────────────────────────────────────────────────────
+function onValIn(){
+  var v=parseFloat($('val-in').value);
+  var h=$('val-hint');
+  if(!isNaN(v)){h.textContent=vLbl(v);h.style.color=vCol(v);}else h.textContent='';
+}
+function bpClass(s,d){
+  if(!s||!d)return null;
+  if(s<120&&d<80)return{col:G,lbl:'Optimal'};
+  if(s<130&&d<85)return{col:G,lbl:'Normal'};
+  if(s<140&&d<90)return{col:W,lbl:'Hochnormal'};
+  if(s<160&&d<100)return{col:B,lbl:'Grad 1 – leicht erhöht'};
+  if(s<180&&d<110)return{col:B,lbl:'Grad 2 – mäßig erhöht'};
+  return{col:B,lbl:'Grad 3 – stark erhöht'};
+}
+function onBP(){
+  var s=parseInt($('bp-s').value),d=parseInt($('bp-d').value);
+  var h=$('bp-hint'),r=bpClass(s,d);
+  if(r){h.textContent=r.lbl;h.style.color=r.col;}else h.textContent='';
+}
+function onKrea(){
+  var v=parseFloat($('krea-in').value),h=$('krea-hint');
+  if(isNaN(v)){h.textContent='';return;}
+  if(v<0.7){h.textContent='Erniedrigt';h.style.color=W;}
+  else if(v<=1.2){h.textContent='Normbereich ✓';h.style.color=G;}
+  else if(v<=1.5){h.textContent='Leicht erhöht';h.style.color=W;}
+  else if(v<=2.0){h.textContent='Erhöht – Niere beobachten';h.style.color=B;}
+  else{h.textContent='Stark erhöht – Arzt kontaktieren';h.style.color=B;}
+}
+function onEgfr(){
+  var v=parseInt($('egfr-in').value),h=$('egfr-hint');
+  if(isNaN(v)){h.textContent='';return;}
+  if(v>=90){h.textContent='Normale Nierenfunktion ✓';h.style.color=G;}
+  else if(v>=60){h.textContent='Leicht eingeschränkt (G2)';h.style.color=G;}
+  else if(v>=45){h.textContent='Mäßig eingeschränkt (G3a)';h.style.color=W;}
+  else if(v>=30){h.textContent='Deutlich eingeschränkt (G3b)';h.style.color=W;}
+  else if(v>=15){h.textContent='Stark eingeschränkt (G4)';h.style.color=B;}
+  else{h.textContent='Nierenversagen (G5) – Arzt kontaktieren';h.style.color=B;}
+}
+function calcWalk(){
+  var km=parseFloat($('km-in').value)||0;
+  var hm=parseInt($('hm-in').value)||0;
+  var r=$('walk-result');
+  if(km<=0){r.style.display='none';return;}
+  var load=km+hm/100;
+  var lbl,kcal=Math.round(km*60+hm*0.1),gicht;
+  if(load<5){lbl='Leicht';gicht='Günstig – fördert Harnsäureabbau';}
+  else if(load<12){lbl='Mittel';gicht='Günstig – regelmäßig positiv';}
+  else if(load<20){lbl='Intensiv';gicht='Neutral – viel trinken wichtig';}
+  else{lbl='Sehr intensiv';gicht='Vorsicht – Harnsäure kann kurz steigen';}
+  $('wc-load').textContent=lbl;
+  $('wc-kcal').textContent='~'+kcal+' kcal';
+  $('wc-gicht').textContent=gicht;
+  r.style.display='block';
+}
+
+// ── Speichern ──────────────────────────────────────────────────────────────
+function saveEntry(){
+  var valRaw=$('val-in').value;
+  var val=valRaw?parseFloat(valRaw):null;
+  var entry={
+    id:st.editId||Date.now().toString(),
+    date:st.date||$('date-in').value||today(),
+    time:st.editId?'':new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),
+    value:val,
+    act:st.act,int:st.int,dur:st.dur,
+    gdur:st.gdur,gex:st.gex,
+    km:parseFloat($('km-in').value)||null,
+    hm:parseInt($('hm-in').value)||null,
+    facs:st.facs.slice(),h2o:st.h2o,allo:st.allo,
+    bpS:parseInt($('bp-s').value)||null,
+    bpD:parseInt($('bp-d').value)||null,
+    pulse:parseInt($('bp-p').value)||null,
+    krea:parseFloat($('krea-in').value)||null,
+    egfr:parseInt($('egfr-in').value)||null,
+    note:$('note-in').value
+  };
+  var entries=getEntries();
+  if(st.editId){entries=entries.map(function(e){return e.id===st.editId?entry:e;});}
+  else{entries.push(entry);}
+  setEntries(entries);
+  resetForm();
+  updateHdr();
+  $('saved-ok').textContent='✓ Gespeichert';
+  setTimeout(function(){$('saved-ok').textContent='';},2000);
+}
+
+function resetForm(){
+  setDraft(null);
+  st={act:'Ruhetag',int:'',dur:'',gdur:'',gex:'',facs:[],h2o:'',allo:true,editId:null};
+  h2oBtn=null;
+  ['val-in','date-in','note-in','bp-s','bp-d','bp-p','krea-in','egfr-in','km-in','hm-in'].forEach(function(id){$(id).value='';});
+  ['val-hint','bp-hint','krea-hint','egfr-hint'].forEach(function(id){$(id).textContent='';});
+  $('date-in').value=today(); st.date=today(); st.date=today();
+  $('allo-tog').className='tog on';
+  $('allo-warn').style.display='none';
+  $('walk-result').style.display='none';
+  $('save-btn').textContent='Eintrag speichern';
+  $('cancel-btn').style.display='none';
+  // Reset alle Chips
+  setAct('Ruhetag');
+  // Fac chips
+  $('fac-chips').querySelectorAll('.chip').forEach(function(b){b.className='chip';});
+}
+function cancelEdit(){resetForm();}
+
+function editEntry(id){
+  var entries=getEntries();
+  var e=null;
+  for(var i=0;i<entries.length;i++){if(entries[i].id===id){e=entries[i];break;}}
+  if(!e)return;
+  st.editId=id; st.act=e.act; st.int=e.int||''; st.dur=e.dur||'';
+  st.gdur=e.gdur||''; st.gex=e.gex||''; st.facs=(e.facs||[]).slice();
+  st.h2o=e.h2o||''; st.allo=e.allo!==false;
+  $('val-in').value=e.value!=null?e.value:'';
+  $('date-in').value=e.date; st.date=e.date;
+  $('note-in').value=e.note||'';
+  $('bp-s').value=e.bpS||''; $('bp-d').value=e.bpD||''; $('bp-p').value=e.pulse||'';
+  $('krea-in').value=e.krea||''; $('egfr-in').value=e.egfr||'';
+  $('km-in').value=e.km||''; $('hm-in').value=e.hm||'';
+  $('allo-tog').className='tog'+(st.allo?' on':'');
+  $('allo-warn').style.display=st.allo?'none':'block';
+  $('save-btn').textContent='Eintrag aktualisieren';
+  $('cancel-btn').style.display='block';
+  setAct(st.act);
+  // Restore chip states
+  if(st.int) setInt(st.int);
+  if(st.dur) setDur(st.dur);
+  if(st.gdur) setGdur(st.gdur);
+  if(st.gex) setGex(st.gex);
+  // Fac chips
+  var facBtns=$('fac-chips').querySelectorAll('.chip');
+  var facVals=['Purinreiche Mahlzeit','Alkohol','Stress','Schlechter Schlaf','Medikament vergessen'];
+  for(var i=0;i<facBtns.length;i++) facBtns[i].className='chip'+(st.facs.indexOf(facVals[i])>=0?' on-w':'');
+  // H2o chip
+  var h2oBtns=document.querySelectorAll('#view-log .card:nth-child(5) .chip');
+  var h2oVals=['< 1,5 L','1,5–2 L','2–3 L','> 3 L'];
+  for(var j=0;j<h2oBtns.length;j++){
+    if(h2oVals[j]===st.h2o){
+      var cls=j===0?'on-bad':j===1?'on-w':'on-g';
+      h2oBtns[j].className='chip '+cls; h2oBtn=h2oBtns[j];
+    } else h2oBtns[j].className='chip';
+  }
+  onValIn(); onBP(); onKrea(); onEgfr(); calcWalk();
+  showView('log');
+}
+
+function delEntry(id){
+  if(!confirm('Eintrag löschen?'))return;
+  setEntries(getEntries().filter(function(e){return e.id!==id;}));
+  updateHdr(); renderHistory();
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────
+function updateHdr(){
+  var entries=getEntries().sort(function(a,b){return a.date.localeCompare(b.date);});
+  var last=entries[entries.length-1];
+  if(last){
+    $('last-badge').style.display='';
+    $('last-num').textContent=last.value!=null?last.value.toFixed(1):'–';
+    $('last-num').style.color=vCol(last.value);
+    $('last-dt').textContent='zuletzt · '+fmtDate(last.date);
+  } else $('last-badge').style.display='none';
+}
+
+// ── Views ──────────────────────────────────────────────────────────────────
+function showView(v){
+  document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('nav button').forEach(function(el){el.classList.remove('active');});
+  $(('view-'+v)).classList.add('active');
+  var ns=['log','history','stats'];
+  var btns=document.querySelectorAll('nav button');
+  for(var i=0;i<ns.length;i++){if(ns[i]===v) btns[i].classList.add('active');}
+  if(v==='history') renderHistory();
+  if(v==='stats') renderStats();
+}
+
+// ── Verlauf ────────────────────────────────────────────────────────────────
+function renderHistory(){
+  var entries=getEntries().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var el=$('hist-content');
+  if(!entries.length){
+    el.innerHTML='<div class="empty"><div class="eico">📋</div><div class="etit">Noch keine Einträge</div><div class="esub">Starte mit der ersten Messung.</div></div>';
+    return;
+  }
+  el.innerHTML=entries.map(function(e){
+    var col=vCol(e.value);
+    var valD=e.value!=null?e.value.toFixed(1):'–';
+    var tags='<span>'+e.act+(e.int?' · '+e.int:'')+(e.dur?' · '+e.dur:'')+'</span>';
+    if(e.km) tags+='<span>🥾 '+e.km+' km'+(e.hm?' / '+e.hm+' Hm':'')+'</span>';
+    if(e.gdur) tags+='<span>🌿 '+e.gdur+(e.gex?' · '+e.gex:'')+'</span>';
+    if(e.h2o) tags+='<span>💧 '+e.h2o+'</span>';
+    if(e.bpS&&e.bpD){var r=bpClass(e.bpS,e.bpD);tags+='<span style="color:'+(r?r.col:MU)+'">🩺 '+e.bpS+'/'+e.bpD+(e.pulse?' · '+e.pulse+' bpm':'')+'</span>';}
+    if(e.krea) tags+='<span>🧪 Krea: '+e.krea+(e.egfr?' · eGFR: '+e.egfr:'')+'</span>';
+    if(e.allo===false) tags+='<span style="color:'+B+'">💊 Allopurinol vergessen</span>';
+    if(e.facs&&e.facs.length) tags+='<span style="color:'+W+'">⚠ '+e.facs.join(', ')+'</span>';
+    return '<div class="hi"><div class="hi-dot" style="background:'+col+'"></div><div class="hi-body"><div class="hi-top"><span class="hi-val" style="color:'+col+'">'+valD+' <span class="hi-unit">mg/dl</span></span><span class="hi-date">'+(fmtDate(e.date)+(e.time?' · '+e.time:''))+'</span></div><div class="hi-tags">'+tags+'</div>'+(e.note?'<div class="hi-note">📝 '+e.note+'</div>':'')+'</div><div class="hi-btns"><button onclick="editEntry(\''+e.id+'\')">✏️</button><button class="del" onclick="delEntry(\''+e.id+'\')">✕</button></div></div>';
+  }).join('');
+}
+
+// ── Statistik ──────────────────────────────────────────────────────────────
+function renderStats(){
+  var entries=getEntries().sort(function(a,b){return a.date.localeCompare(b.date);});
+  var el=$('stats-content');
+  if(!entries.length){el.innerHTML='<div class="empty"><div class="eico">📊</div><div class="etit">Noch keine Daten</div></div>';return;}
+  var vals=entries.map(function(e){return e.value;}).filter(function(v){return v!=null;});
+  var avg=vals.length?(vals.reduce(function(s,v){return s+v;},0)/vals.length).toFixed(2):null;
+  var best=vals.length?Math.min.apply(null,vals):null;
+  var inT=vals.filter(function(v){return v<=TARGET;}).length;
+  var pct=vals.length?Math.round(inT/vals.length*100):0;
+  var pctC=pct>=70?G:pct>=40?W:B;
+  // Sparkline
+  var W2=300,H=52,pad=6,html='';
+  if(vals.length>=2){
+    var mn=Math.min.apply(null,vals.concat([4.5])),mx=Math.max.apply(null,vals.concat([8.0]));
+    var pts=vals.map(function(v,i){var x=pad+(i/(vals.length-1))*(W2-2*pad);var y=H-pad-((v-mn)/(mx-mn||1))*(H-2*pad);return x+','+y;}).join(' ');
+    var ty=H-pad-((TARGET-mn)/(mx-mn||1))*(H-2*pad);
+    var cirs=vals.map(function(v,i){var x=pad+(i/(vals.length-1))*(W2-2*pad);var y=H-pad-((v-mn)/(mx-mn||1))*(H-2*pad);return '<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+vCol(v)+'" stroke="var(--bg)" stroke-width="1.5"/>';}).join('');
+    html='<svg class="spark-svg" viewBox="0 0 '+W2+' '+H+'"><line x1="'+pad+'" y1="'+ty+'" x2="'+(W2-pad)+'" y2="'+ty+'" stroke="'+G+'" stroke-width="1" stroke-dasharray="4 3" opacity="0.4"/><polyline points="'+pts+'" fill="none" stroke="'+AC+'" stroke-width="2" stroke-linejoin="round"/>'+cirs+'</svg>';
+  }
+  // Aktivität
+  var byAct={};
+  entries.forEach(function(e){if(!byAct[e.act])byAct[e.act]=[];if(e.value!=null)byAct[e.act].push(e.value);});
+  var actHtml=Object.keys(byAct).filter(function(k){return byAct[k].length>0;}).length>1?'<div class="card"><div class="card-title">Ø Harnsäure nach Aktivität</div>'+Object.keys(byAct).filter(function(k){return byAct[k].length>0;}).map(function(act){var a=byAct[act].reduce(function(s,v){return s+v;},0)/byAct[act].length;return '<div class="st-row"><span>'+act+'</span><span style="font-weight:700;color:'+vCol(a)+'">'+a.toFixed(2)+' mg/dl</span></div>';}).join('')+'</div>':'';
+  // Walk
+  var walkE=entries.filter(function(e){return (e.act==='Wandern'||e.act==='Spaziergang')&&e.km;});
+  var walkHtml=walkE.length?'<div class="card"><div class="card-title">🥾 Wander- & Spaziergang-Statistik</div><div class="st-row"><span>Gesamt km</span><span style="font-weight:700">'+walkE.reduce(function(s,e){return s+e.km;},0).toFixed(1)+' km</span></div><div class="st-row"><span>Ø km pro Tour</span><span style="font-weight:700">'+(walkE.reduce(function(s,e){return s+e.km;},0)/walkE.length).toFixed(1)+' km</span></div>'+(walkE.some(function(e){return e.hm;})?'<div class="st-row"><span>Gesamt Höhenmeter</span><span style="font-weight:700">'+walkE.filter(function(e){return e.hm;}).reduce(function(s,e){return s+e.hm;},0)+' Hm</span></div>':'')+'</div>':'';
+  // Faktoren
+  var facs=['Purinreiche Mahlzeit','Alkohol','Stress','Schlechter Schlaf','Medikament vergessen'];
+  var fMap={};facs.forEach(function(f){fMap[f]=[];});
+  entries.forEach(function(e){(e.facs||[]).forEach(function(f){if(fMap[f]&&e.value!=null)fMap[f].push(e.value);});});
+  var fE=facs.filter(function(f){return fMap[f].length>0;});
+  var facHtml=fE.length?'<div class="card"><div class="card-title">Einflussfaktoren</div>'+fE.map(function(f){var a=fMap[f].reduce(function(s,v){return s+v;},0)/fMap[f].length;return '<div class="st-row"><span style="font-size:12px">'+f+' <span style="color:'+MU+'">('+fMap[f].length+'×)</span></span><span style="font-weight:700;color:'+vCol(a)+'">'+a.toFixed(2)+'</span></div>';}).join('')+'</div>':'';
+  // Blutdruck
+  var bpE=entries.filter(function(e){return e.bpS&&e.bpD;});
+  var bpHtml='';
+  if(bpE.length){var aS=Math.round(bpE.reduce(function(s,e){return s+e.bpS;},0)/bpE.length);var aD=Math.round(bpE.reduce(function(s,e){return s+e.bpD;},0)/bpE.length);var pE=bpE.filter(function(e){return e.pulse;});var aP=pE.length?Math.round(pE.reduce(function(s,e){return s+e.pulse;},0)/pE.length):null;var r=bpClass(aS,aD);bpHtml='<div class="card"><div class="card-title">Ø Blutdruck & Puls ('+bpE.length+' Messungen)</div><div style="display:flex;gap:12px;align-items:center;margin-top:6px"><div style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:'+(r?r.col:MU)+';letter-spacing:-1px">'+aS+'/'+aD+'</div><div style="font-size:11px;color:'+MU+'">mmHg · '+(r?r.lbl:'')+'</div></div>'+(aP?'<div style="text-align:center;flex:0 0 65px"><div style="font-size:26px;font-weight:800;color:'+AC+';letter-spacing:-1px">'+aP+'</div><div style="font-size:11px;color:'+MU+'">Ø Puls</div></div>':'')+'</div></div>';}
+  // Labor
+  var kE=entries.filter(function(e){return e.krea;});
+  var labHtml='';
+  if(kE.length){var aK=(kE.reduce(function(s,e){return s+e.krea;},0)/kE.length).toFixed(2);var gE=entries.filter(function(e){return e.egfr;});var aG=gE.length?Math.round(gE.reduce(function(s,e){return s+e.egfr;},0)/gE.length):null;labHtml='<div class="card"><div class="card-title">Blutbildwerte ('+kE.length+' Messungen)</div><div class="st-row"><span>Ø Kreatinin</span><span style="font-weight:700;color:'+(parseFloat(aK)<=1.2?G:parseFloat(aK)<=1.5?W:B)+'">'+aK+' mg/dl</span></div>'+(aG?'<div class="st-row"><span>Ø eGFR</span><span style="font-weight:700;color:'+(aG>=60?G:aG>=30?W:B)+'">'+aG+' ml/min</span></div>':'')+'</div>';}
+
+  el.innerHTML='<div class="card"><div class="card-title">Verlauf Harnsäure</div>'+html+'<div class="big3"><div class="b3"><div class="b3n" style="color:'+(avg?vCol(parseFloat(avg)):MU)+'">'+(avg||'–')+'</div><div class="b3l">Ø mg/dl</div></div><div class="b3"><div class="b3n" style="color:'+(best!=null?vCol(best):MU)+'">'+(best!=null?best.toFixed(1):'–')+'</div><div class="b3l">Bestwert</div></div><div class="b3"><div class="b3n" style="color:'+MU+'">'+entries.length+'</div><div class="b3l">Einträge</div></div></div></div>'+(vals.length?'<div class="card"><div class="card-title">Im Zielbereich ≤ 6,0 mg/dl</div><div class="prog-row"><div class="prog-bar"><div class="prog-fill" style="width:'+pct+'%;background:'+pctC+'"></div></div><span class="prog-pct" style="color:'+pctC+'">'+pct+'%</span></div><div class="prog-sub">'+inT+' von '+vals.length+' Messungen</div></div>':'')+actHtml+walkHtml+facHtml+bpHtml+labHtml;
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function togExp(){
+  var b=$('exp-box');
+  if(b.style.display==='block'){b.style.display='none';return;}
+  var entries=getEntries().sort(function(a,b){return a.date.localeCompare(b.date);});
+  if(!entries.length){alert('Noch keine Einträge.');return;}
+  var lines=['GICHT-PROTOKOLL – Export für Claude','='.repeat(50),''];
+  entries.forEach(function(e){
+    var d=new Date(e.date).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+    var l=d+' | '+(e.value!=null?e.value.toFixed(1)+' mg/dl':'kein Harnsäurewert')+' | '+e.act;
+    if(e.int) l+=' ('+e.int+')';
+    if(e.dur) l+=' '+e.dur;
+    if(e.km)  l+=' | '+e.km+' km'+(e.hm?' / '+e.hm+' Hm':'');
+    if(e.gdur) l+=' | Garten: '+e.gdur+(e.gex?' / '+e.gex:'');
+    if(e.h2o) l+=' | Trinkmenge: '+e.h2o;
+    l+=' | Allopurinol: '+(e.allo===false?'VERGESSEN':'Ja');
+    if(e.facs&&e.facs.length) l+=' | Faktoren: '+e.facs.join(', ');
+    if(e.bpS&&e.bpD) l+=' | RR: '+e.bpS+'/'+e.bpD+' mmHg'+(e.pulse?' Puls: '+e.pulse+' bpm':'');
+    if(e.krea) l+=' | Krea: '+e.krea+' mg/dl'+(e.egfr?' eGFR: '+e.egfr+' ml/min':'');
+    if(e.note) l+=' | Notiz: '+e.note;
+    lines.push(l);
+  });
+  lines.push('','Ziel: ≤ '+TARGET+' mg/dl','Export: '+new Date().toLocaleDateString('de-DE'));
+  $('exp-txt').value=lines.join('\n');
+  $('exp-txt').style.height=Math.min(entries.length*22+80,300)+'px';
+  b.style.display='block';
+}
+function copyExp(){
+  var ta=$('exp-txt');ta.select();
+  try{navigator.clipboard.writeText(ta.value).catch(function(){document.execCommand('copy');});}
+  catch(e){document.execCommand('copy');}
+  $('copy-ok').textContent='✓ Kopiert! Jetzt in Claude einfügen.';
+  setTimeout(function(){$('copy-ok').textContent='';},3000);
+}
+
+// ── Backup & Restore ───────────────────────────────────────────────────────
+function doBackup(){
+  var e=getEntries();
+  if(!e.length){bkpMsg('Keine Daten.',B);return;}
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({v:2,date:new Date().toISOString(),entries:e},null,2)],{type:'application/json'}));
+  a.download='gicht-backup-'+today()+'.json';a.click();
+  bkpMsg('✓ Backup gespeichert!',G);
+}
+function doRestore(ev){
+  var f=ev.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var bk=JSON.parse(e.target.result);
+      if(!bk.entries||!Array.isArray(bk.entries))throw 0;
+      var ex=getEntries(),ids={};
+      ex.forEach(function(x){ids[x.id]=true;});
+      var nw=bk.entries.filter(function(x){return !ids[x.id];});
+      if(confirm(nw.length+' neue Einträge importieren? ('+ex.length+' vorhanden)')){
+        setEntries(ex.concat(nw).sort(function(a,b){return a.date.localeCompare(b.date);}));
+        updateHdr(); renderStats(); renderHistory(); bkpMsg('✓ '+nw.length+' Einträge importiert!',G);
+      }
+    }catch(err){bkpMsg('Fehler: Ungültige Datei.',B);}
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function bkpMsg(t,c){var e=$('bkp-msg');e.textContent=t;e.style.color=c;setTimeout(function(){e.textContent='';},3000);}
+
+// ── Auto-Draft ─────────────────────────────────────────────────────────────
+var dT=null;
+function sched(){clearTimeout(dT);dT=setTimeout(saveDraft,800);}
+function saveDraft(){
+  setDraft({
+    value:$('val-in').value,date:$('date-in').value,
+    act:st.act,int:st.int,dur:st.dur,gdur:st.gdur,gex:st.gex,
+    facs:st.facs.slice(),h2o:st.h2o,allo:st.allo,
+    bpS:$('bp-s').value,bpD:$('bp-d').value,pulse:$('bp-p').value,
+    krea:$('krea-in').value,egfr:$('egfr-in').value,
+    km:$('km-in').value,hm:$('hm-in').value,
+    note:$('note-in').value
+  });
+  var el=$('draft-ok');
+  el.textContent='✓ Zwischengespeichert';el.style.opacity='1';
+  clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},1500);
+}
+function loadDraft(){
+  var d=getDraft();if(!d||st.editId)return;
+  if(d.value)  $('val-in').value=d.value;
+  if(d.date){$('date-in').value=d.date; st.date=d.date;}
+  if(d.note)   $('note-in').value=d.note;
+  if(d.bpS)    $('bp-s').value=d.bpS;
+  if(d.bpD)    $('bp-d').value=d.bpD;
+  if(d.pulse)  $('bp-p').value=d.pulse;
+  if(d.krea)   $('krea-in').value=d.krea;
+  if(d.egfr)   $('egfr-in').value=d.egfr;
+  if(d.km)     $('km-in').value=d.km;
+  if(d.hm)     $('hm-in').value=d.hm;
+  if(d.act)    setAct(d.act);
+  if(d.int)    setInt(d.int);
+  if(d.dur)    setDur(d.dur);
+  if(d.gdur)   setGdur(d.gdur);
+  if(d.gex)    setGex(d.gex);
+  if(d.facs&&d.facs.length){
+    st.facs=d.facs.slice();
+    var facBtns=$('fac-chips').querySelectorAll('.chip');
+    var facVals=['Purinreiche Mahlzeit','Alkohol','Stress','Schlechter Schlaf','Medikament vergessen'];
+    for(var i=0;i<facBtns.length;i++) facBtns[i].className='chip'+(st.facs.indexOf(facVals[i])>=0?' on-w':'');
+  }
+  if(d.allo!==undefined){
+    st.allo=d.allo;
+    $('allo-tog').className='tog'+(d.allo?' on':'');
+    $('allo-warn').style.display=d.allo?'none':'block';
+  }
+  if(d.bpS&&d.bpD) onBP();
+  if(d.krea) onKrea();
+  if(d.egfr) onEgfr();
+  if(d.km)   calcWalk();
+  onValIn();
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+$('date-in').value=today(); st.date=today();
+initDB(function(){
+  loadFromDB(function(){
+    updateHdr();
+    loadDraft();
+    // Show storage status
+    var info=$('db-info');
+    if(info) info.textContent=_db?'':'⚠ Kein dauerhafter Speicher – Backup nutzen!';
+  });
+});
+</script>
+</body>
+</html>
