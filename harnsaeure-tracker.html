@@ -223,10 +223,10 @@ textarea{resize:vertical;min-height:56px;font-size:14px}
   <div class="card">
     <div class="card-title">🩺 Blutdruck &amp; Puls <span style="font-weight:400;font-size:10px;color:var(--muted)">(optional)</span></div>
     <div class="inp-row">
-      <div class="inp-col"><span class="sub">Systolisch</span><input id="bp-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP();sched()"></div>
+      <div class="inp-col"><span class="sub">Systolisch</span><input id="bp-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP();sched();if(this.value.length>=3)$('bp-d').focus();"></div>
       <div class="inp-sep">/</div>
-      <div class="inp-col"><span class="sub">Diastolisch</span><input id="bp-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP();sched()"></div>
-      <div class="inp-col"><span class="sub">Puls /min</span><input id="bp-p" type="number" min="30" max="220" placeholder="z.B. 72" oninput="sched()"></div>
+      <div class="inp-col"><span class="sub">Diastolisch</span><input id="bp-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP();sched();if(this.value.length>=2)$('bp-p').focus();"></div>
+      <div class="inp-col"><span class="sub">Puls /min</span><input id="bp-p" type="number" min="30" max="220" placeholder="z.B. 72" oninput="sched();"></div>
     </div>
     <div id="bp-hint" class="hint-line"></div>
   </div>
@@ -234,7 +234,7 @@ textarea{resize:vertical;min-height:56px;font-size:14px}
   <div class="card">
     <div class="card-title">🧪 Blutbildwerte <span style="font-weight:400;font-size:10px;color:var(--muted)">(optional)</span></div>
     <div class="inp-row">
-      <div class="inp-col"><span class="sub">Kreatinin (mg/dl)</span><input id="krea-in" type="number" step="0.01" min="0.1" max="20" placeholder="z.B. 1.0" oninput="onKrea();sched()"></div>
+      <div class="inp-col"><span class="sub">Kreatinin (mg/dl)</span><input id="krea-in" type="number" step="0.01" min="0.1" max="20" placeholder="z.B. 1.0" oninput="onKrea();sched();"></div>
       <div class="inp-col"><span class="sub">eGFR (ml/min)</span><input id="egfr-in" type="number" step="1" min="1" max="150" placeholder="z.B. 75" oninput="onEgfr();sched()"></div>
     </div>
     <div id="krea-hint" class="hint-line"></div>
@@ -279,12 +279,12 @@ textarea{resize:vertical;min-height:56px;font-size:14px}
     <div class="inp-row">
       <div class="inp-col">
         <span class="sub">Systolisch</span>
-        <input id="bp2-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP2()">
+        <input id="bp2-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP2();if(this.value.length>=3)$('bp2-d').focus();">
       </div>
       <div class="inp-sep">/</div>
       <div class="inp-col">
         <span class="sub">Diastolisch</span>
-        <input id="bp2-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP2()">
+        <input id="bp2-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP2();if(this.value.length>=2)$('bp2-p').focus();">
       </div>
       <div class="inp-col">
         <span class="sub">Puls /min</span>
