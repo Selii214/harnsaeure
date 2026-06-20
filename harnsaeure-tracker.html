@@ -110,6 +110,7 @@ textarea{resize:vertical;min-height:56px;font-size:14px}
   <nav>
     <button class="active" onclick="showView('log')">Messen</button>
     <button onclick="showView('history')">Verlauf</button>
+    <button onclick="showView('bp')">Blutdruck</button>
     <button onclick="showView('stats')">Statistik</button>
   </nav>
 </div>
@@ -270,6 +271,65 @@ textarea{resize:vertical;min-height:56px;font-size:14px}
   <input type="file" id="restore-in" accept=".json,application/json,text/json,text/plain,*/*" style="display:none" onchange="doRestore(event)">
   <div id="bkp-msg"></div>
   <div class="footer">Alle Daten werden lokal auf deinem Gerät gespeichert.</div>
+</div>
+
+<div id="view-bp" class="view">
+  <div class="card">
+    <div class="card-title">🩺 Blutdruck & Puls messen</div>
+    <div class="inp-row">
+      <div class="inp-col">
+        <span class="sub">Systolisch</span>
+        <input id="bp2-s" type="number" min="60" max="250" placeholder="z.B. 125" oninput="onBP2()">
+      </div>
+      <div class="inp-sep">/</div>
+      <div class="inp-col">
+        <span class="sub">Diastolisch</span>
+        <input id="bp2-d" type="number" min="40" max="150" placeholder="z.B. 80" oninput="onBP2()">
+      </div>
+      <div class="inp-col">
+        <span class="sub">Puls /min</span>
+        <input id="bp2-p" type="number" min="30" max="220" placeholder="z.B. 72">
+      </div>
+    </div>
+    <div id="bp2-hint" class="hint-line"></div>
+    <div style="margin-top:12px">
+      <span class="sub">Datum & Uhrzeit</span>
+      <input id="bp2-date" type="date">
+    </div>
+    <div style="margin-top:8px">
+      <span class="sub">Tageszeit</span>
+      <div class="chips">
+        <button class="chip on" onclick="setBP2time(this,'Morgens')">Morgens</button>
+        <button class="chip" onclick="setBP2time(this,'Mittags')">Mittags</button>
+        <button class="chip" onclick="setBP2time(this,'Abends')">Abends</button>
+        <button class="chip" onclick="setBP2time(this,'Nachts')">Nachts</button>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <span class="sub">Situation</span>
+      <div class="chips">
+        <button class="chip on" onclick="setBP2sit(this,'Ruhend')">Ruhend</button>
+        <button class="chip" onclick="setBP2sit(this,'Nach Aktivität')">Nach Aktivität</button>
+        <button class="chip" onclick="setBP2sit(this,'Gestresst')">Gestresst</button>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <span class="sub">Notiz (optional)</span>
+      <textarea id="bp2-note" placeholder="Bemerkungen…" style="min-height:44px"></textarea>
+    </div>
+    <button id="bp2-save-btn" onclick="saveBP2()" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-top:8px">Messung speichern</button>
+    <div id="bp2-saved" style="text-align:center;color:var(--good);font-size:13px;margin-top:6px;font-weight:700;min-height:18px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Letzte Messungen</div>
+    <div id="bp2-history"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Auswertung</div>
+    <div id="bp2-stats"></div>
+  </div>
 </div>
 
 <script>
@@ -590,11 +650,12 @@ function showView(v){
   document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('nav button').forEach(function(el){el.classList.remove('active');});
   $(('view-'+v)).classList.add('active');
-  var ns=['log','history','stats'];
+  var ns=['log','history','bp','stats'];
   var btns=document.querySelectorAll('nav button');
   for(var i=0;i<ns.length;i++){if(ns[i]===v) btns[i].classList.add('active');}
   if(v==='history') renderHistory();
   if(v==='stats') renderStats();
+  if(v==='bp'){$('bp2-date').value=today(); renderBP2();}
 }
 
 // ── Verlauf ────────────────────────────────────────────────────────────────
@@ -653,10 +714,108 @@ function renderStats(){
   entries.forEach(function(e){(e.facs||[]).forEach(function(f){if(fMap[f]&&e.value!=null)fMap[f].push(e.value);});});
   var fE=facs.filter(function(f){return fMap[f].length>0;});
   var facHtml=fE.length?'<div class="card"><div class="card-title">Einflussfaktoren</div>'+fE.map(function(f){var a=fMap[f].reduce(function(s,v){return s+v;},0)/fMap[f].length;return '<div class="st-row"><span style="font-size:12px">'+f+' <span style="color:'+MU+'">('+fMap[f].length+'×)</span></span><span style="font-weight:700;color:'+vCol(a)+'">'+a.toFixed(2)+'</span></div>';}).join('')+'</div>':'';
-  // Blutdruck
+  // Blutdruck erweitert
   var bpE=entries.filter(function(e){return e.bpS&&e.bpD;});
   var bpHtml='';
-  if(bpE.length){var aS=Math.round(bpE.reduce(function(s,e){return s+e.bpS;},0)/bpE.length);var aD=Math.round(bpE.reduce(function(s,e){return s+e.bpD;},0)/bpE.length);var pE=bpE.filter(function(e){return e.pulse;});var aP=pE.length?Math.round(pE.reduce(function(s,e){return s+e.pulse;},0)/pE.length):null;var r=bpClass(aS,aD);bpHtml='<div class="card"><div class="card-title">Ø Blutdruck & Puls ('+bpE.length+' Messungen)</div><div style="display:flex;gap:12px;align-items:center;margin-top:6px"><div style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:'+(r?r.col:MU)+';letter-spacing:-1px">'+aS+'/'+aD+'</div><div style="font-size:11px;color:'+MU+'">mmHg · '+(r?r.lbl:'')+'</div></div>'+(aP?'<div style="text-align:center;flex:0 0 65px"><div style="font-size:26px;font-weight:800;color:'+AC+';letter-spacing:-1px">'+aP+'</div><div style="font-size:11px;color:'+MU+'">Ø Puls</div></div>':'')+'</div></div>';}
+  if(bpE.length){
+    var aS=Math.round(bpE.reduce(function(s,e){return s+e.bpS;},0)/bpE.length);
+    var aD=Math.round(bpE.reduce(function(s,e){return s+e.bpD;},0)/bpE.length);
+    var pE=bpE.filter(function(e){return e.pulse;});
+    var aP=pE.length?Math.round(pE.reduce(function(s,e){return s+e.pulse;},0)/pE.length):null;
+    var minP=pE.length?Math.min.apply(null,pE.map(function(e){return e.pulse;})):null;
+    var maxP=pE.length?Math.max.apply(null,pE.map(function(e){return e.pulse;})):null;
+    var minS=Math.min.apply(null,bpE.map(function(e){return e.bpS;}));
+    var maxS=Math.max.apply(null,bpE.map(function(e){return e.bpS;}));
+    var minD=Math.min.apply(null,bpE.map(function(e){return e.bpD;}));
+    var maxD=Math.max.apply(null,bpE.map(function(e){return e.bpD;}));
+    var r=bpClass(aS,aD);
+
+    // Klassifikation nach ESC/ESH 2023
+    var cats={opt:0,norm:0,hochn:0,g1:0,g2:0,g3:0};
+    bpE.forEach(function(e){
+      if(e.bpS<120&&e.bpD<80) cats.opt++;
+      else if(e.bpS<130&&e.bpD<85) cats.norm++;
+      else if(e.bpS<140&&e.bpD<90) cats.hochn++;
+      else if(e.bpS<160&&e.bpD<100) cats.g1++;
+      else if(e.bpS<180&&e.bpD<110) cats.g2++;
+      else cats.g3++;
+    });
+
+    // Sparkline systolisch
+    var W2=300,H=48,pad=6;
+    var sVals=bpE.map(function(e){return e.bpS;});
+    var dVals=bpE.map(function(e){return e.bpD;});
+    var mnBP=Math.min.apply(null,dVals.concat([55]));
+    var mxBP=Math.max.apply(null,sVals.concat([160]));
+    var sparkBP='';
+    if(bpE.length>=2){
+      var ptsS=sVals.map(function(v,i){var x=pad+(i/(sVals.length-1))*(W2-2*pad);var y=H-pad-((v-mnBP)/(mxBP-mnBP))*(H-2*pad);return x+','+y;}).join(' ');
+      var ptsD=dVals.map(function(v,i){var x=pad+(i/(dVals.length-1))*(W2-2*pad);var y=H-pad-((v-mnBP)/(mxBP-mnBP))*(H-2*pad);return x+','+y;}).join(' ');
+      var ty130=H-pad-((130-mnBP)/(mxBP-mnBP))*(H-2*pad);
+      var ty80=H-pad-((80-mnBP)/(mxBP-mnBP))*(H-2*pad);
+      var cirsS=sVals.map(function(v,i){var x=pad+(i/(sVals.length-1))*(W2-2*pad);var y=H-pad-((v-mnBP)/(mxBP-mnBP))*(H-2*pad);return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+(v>=140?B:v>=130?W:G)+'" stroke="var(--bg)" stroke-width="1"/>';}).join('');
+      var cirsD=dVals.map(function(v,i){var x=pad+(i/(dVals.length-1))*(W2-2*pad);var y=H-pad-((v-mnBP)/(mxBP-mnBP))*(H-2*pad);return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+(v>=90?B:v>=85?W:G)+'" stroke="var(--bg)" stroke-width="1"/>';}).join('');
+      sparkBP='<svg class="spark-svg" viewBox="0 0 '+W2+' '+H+'" style="margin:8px 0">'
+        +'<line x1="'+pad+'" y1="'+ty130+'" x2="'+(W2-pad)+'" y2="'+ty130+'" stroke="'+W+'" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>'
+        +'<line x1="'+pad+'" y1="'+ty80+'" x2="'+(W2-pad)+'" y2="'+ty80+'" stroke="'+G+'" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>'
+        +'<polyline points="'+ptsS+'" fill="none" stroke="'+B+'" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>'
+        +'<polyline points="'+ptsD+'" fill="none" stroke="'+AC+'" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>'
+        +cirsS+cirsD+'</svg>'
+        +'<div style="display:flex;gap:12px;font-size:11px;color:'+MU+';margin-bottom:4px">'
+        +'<span><span style="color:'+B+'">●</span> Systolisch</span>'
+        +'<span><span style="color:'+AC+'">●</span> Diastolisch</span>'
+        +'<span style="color:'+W+'">— 130 mmHg Ziel</span>'
+        +'</div>';
+    }
+
+    // Ruhepuls (nur Ruhetag-Einträge)
+    var rpE=entries.filter(function(e){return e.act==='Ruhetag'&&e.pulse;});
+    var rpHtml=rpE.length?'<div class="st-row"><span>Ø Ruhepuls</span><span style="font-weight:700;color:'+AC+'">'+Math.round(rpE.reduce(function(s,e){return s+e.pulse;},0)/rpE.length)+' bpm</span></div>':'';
+
+    // Klassifikations-Balken
+    var catTotal=bpE.length;
+    function catBar(label,count,color){
+      if(!count) return '';
+      var pct=Math.round(count/catTotal*100);
+      return '<div style="margin:4px 0"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span>'+label+'</span><span style="font-weight:700;color:'+color+'">'+count+'× ('+pct+'%)</span></div><div style="height:5px;background:var(--s3);border-radius:3px"><div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:3px"></div></div></div>';
+    }
+
+    // BP/Harnsäure Zusammenhang
+    var bpHighE=bpE.filter(function(e){return e.bpS>=130&&e.value!=null;});
+    var bpNormE=bpE.filter(function(e){return e.bpS<130&&e.value!=null;});
+    var bpCorrHtml='';
+    if(bpHighE.length>0&&bpNormE.length>0){
+      var avgUAHigh=(bpHighE.reduce(function(s,e){return s+e.value;},0)/bpHighE.length).toFixed(2);
+      var avgUANorm=(bpNormE.reduce(function(s,e){return s+e.value;},0)/bpNormE.length).toFixed(2);
+      bpCorrHtml='<div class="st-row"><span style="font-size:12px">Ø Harnsäure bei RR ≥ 130</span><span style="font-weight:700;color:'+vCol(parseFloat(avgUAHigh))+'">'+avgUAHigh+' mg/dl</span></div>'
+        +'<div class="st-row"><span style="font-size:12px">Ø Harnsäure bei RR &lt; 130</span><span style="font-weight:700;color:'+vCol(parseFloat(avgUANorm))+'">'+avgUANorm+' mg/dl</span></div>';
+    }
+
+    bpHtml='<div class="card"><div class="card-title">🩺 Blutdruck & Puls ('+bpE.length+' Messungen)</div>'
+      // Durchschnitt
+      +'<div style="display:flex;gap:8px;align-items:center;margin:6px 0 10px">'
+      +'<div style="flex:1;text-align:center;background:var(--s3);border-radius:8px;padding:8px 4px"><div style="font-size:24px;font-weight:800;color:'+(r?r.col:MU)+';letter-spacing:-1px">'+aS+'/'+aD+'</div><div style="font-size:11px;color:'+MU+'">Ø mmHg · '+(r?r.lbl:'')+'</div></div>'
+      +(aP?'<div style="text-align:center;background:var(--s3);border-radius:8px;padding:8px 12px"><div style="font-size:24px;font-weight:800;color:'+AC+';letter-spacing:-1px">'+aP+'</div><div style="font-size:11px;color:'+MU+'">Ø Puls</div></div>':'')
+      +'</div>'
+      // Sparkline
+      +sparkBP
+      // Min/Max
+      +'<div class="st-row"><span style="font-size:12px">Bereich Systolisch</span><span style="font-weight:700">'+minS+' – '+maxS+' mmHg</span></div>'
+      +'<div class="st-row"><span style="font-size:12px">Bereich Diastolisch</span><span style="font-weight:700">'+minD+' – '+maxD+' mmHg</span></div>'
+      +(pE.length?'<div class="st-row"><span style="font-size:12px">Puls Min / Max</span><span style="font-weight:700">'+minP+' / '+maxP+' bpm</span></div>':'')
+      +rpHtml
+      // Klassifikation
+      +'<div class="card-title" style="margin-top:10px">Klassifikation (ESC/ESH 2023)</div>'
+      +catBar('Optimal (< 120/80)',cats.opt,G)
+      +catBar('Normal (120–129 / 80–84)',cats.norm,G)
+      +catBar('Hochnormal (130–139 / 85–89)',cats.hochn,W)
+      +catBar('Grad 1 (140–159 / 90–99)',cats.g1,B)
+      +catBar('Grad 2 (160–179 / 100–109)',cats.g2,B)
+      +catBar('Grad 3 (≥ 180 / ≥ 110)',cats.g3,B)
+      // Zusammenhang BP/Harnsäure
+      +(bpCorrHtml?'<div class="card-title" style="margin-top:10px">Zusammenhang RR & Harnsäure</div>'+bpCorrHtml:'')
+      +'</div>';
+  }
   // Labor
   var kE=entries.filter(function(e){return e.krea;});
   var labHtml='';
@@ -780,6 +939,148 @@ function loadDraft(){
   if(d.egfr) onEgfr();
   if(d.km)   calcWalk();
   onValIn();
+}
+
+
+// ── Blutdruck-Tab ──────────────────────────────────────────────────────────
+var bp2State = { time: 'Morgens', sit: 'Ruhend', timeBtn: null, sitBtn: null };
+
+function onBP2(){
+  var s=parseInt($('bp2-s').value), d=parseInt($('bp2-d').value);
+  var h=$('bp2-hint'), r=bpClass(s,d);
+  if(r){h.textContent=r.lbl;h.style.color=r.col;}else h.textContent='';
+}
+
+function setBP2time(btn, v){
+  if(bp2State.timeBtn) bp2State.timeBtn.className='chip';
+  bp2State.time=v; bp2State.timeBtn=btn;
+  btn.className='chip on';
+}
+
+function setBP2sit(btn, v){
+  if(bp2State.sitBtn) bp2State.sitBtn.className='chip';
+  bp2State.sit=v; bp2State.sitBtn=btn;
+  btn.className='chip on';
+}
+
+function getBP2entries(){ try{return JSON.parse(localStorage.getItem('gp_bp2')||'[]');}catch(e){return[];} }
+function setBP2entries(a){ 
+  try{localStorage.setItem('gp_bp2',JSON.stringify(a));}catch(e){}
+  // Also store in IndexedDB if available
+  if(_db){try{var tx=_db.transaction('meta','readwrite');tx.objectStore('meta').put(a,'bp2entries');}catch(e){}}
+}
+
+function saveBP2(){
+  var s=parseInt($('bp2-s').value), d=parseInt($('bp2-d').value);
+  if(isNaN(s)||isNaN(d)){$('bp2-s').focus();return;}
+  var entry={
+    id: Date.now().toString(),
+    date: $('bp2-date').value||today(),
+    time: new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),
+    daytime: bp2State.time,
+    sit: bp2State.sit,
+    bpS: s, bpD: d,
+    pulse: parseInt($('bp2-p').value)||null,
+    note: $('bp2-note').value
+  };
+  var entries=getBP2entries();
+  entries.push(entry);
+  setBP2entries(entries);
+  // Reset
+  $('bp2-s').value=''; $('bp2-d').value=''; $('bp2-p').value='';
+  $('bp2-hint').textContent=''; $('bp2-note').value='';
+  $('bp2-saved').textContent='✓ Gespeichert';
+  setTimeout(function(){$('bp2-saved').textContent='';},2000);
+  renderBP2();
+}
+
+function delBP2(id){
+  if(!confirm('Messung löschen?'))return;
+  setBP2entries(getBP2entries().filter(function(e){return e.id!==id;}));
+  renderBP2();
+}
+
+function renderBP2(){
+  var entries=getBP2entries().sort(function(a,b){return b.id.localeCompare(a.id);});
+  var hEl=$('bp2-history'), sEl=$('bp2-stats');
+  if(!entries.length){
+    hEl.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">Noch keine Messungen</div>';
+    sEl.innerHTML='';
+    return;
+  }
+
+  // History
+  hEl.innerHTML=entries.slice(0,10).map(function(e){
+    var r=bpClass(e.bpS,e.bpD);
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div>'
+      +'<span style="font-size:16px;font-weight:800;color:'+(r?r.col:MU)+'">'+e.bpS+'/'+e.bpD+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);margin-left:6px">mmHg</span>'
+      +(e.pulse?'<span style="font-size:12px;color:'+AC+';margin-left:8px">♥ '+e.pulse+' bpm</span>':'')
+      +'<div style="font-size:11px;color:var(--muted2);margin-top:2px">'+fmtDate(e.date)+' '+e.time+' · '+e.daytime+' · '+e.sit+'</div>'
+      +(e.note?'<div style="font-size:11px;color:var(--muted);font-style:italic">'+e.note+'</div>':'')
+      +'</div>'
+      +'<button data-id="'+e.id+'" onclick="delBP2(this.getAttribute(\'data-id\'))" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;color:var(--bad)">✕</button>'
+      +'</div>';
+  }).join('');
+
+  // Stats
+  var aS=Math.round(entries.reduce(function(s,e){return s+e.bpS;},0)/entries.length);
+  var aD=Math.round(entries.reduce(function(s,e){return s+e.bpD;},0)/entries.length);
+  var pEntries=entries.filter(function(e){return e.pulse;});
+  var aP=pEntries.length?Math.round(pEntries.reduce(function(s,e){return s+e.pulse;},0)/pEntries.length):null;
+  var minS=Math.min.apply(null,entries.map(function(e){return e.bpS;}));
+  var maxS=Math.max.apply(null,entries.map(function(e){return e.bpS;}));
+  var minD=Math.min.apply(null,entries.map(function(e){return e.bpD;}));
+  var maxD=Math.max.apply(null,entries.map(function(e){return e.bpD;}));
+  var r=bpClass(aS,aD);
+
+  // Nach Tageszeit
+  var byTime={};
+  entries.forEach(function(e){
+    if(!byTime[e.daytime]){byTime[e.daytime]={s:[],d:[]};}
+    byTime[e.daytime].s.push(e.bpS);
+    byTime[e.daytime].d.push(e.bpD);
+  });
+  var timeRows=Object.keys(byTime).map(function(t){
+    var avS=Math.round(byTime[t].s.reduce(function(a,b){return a+b;},0)/byTime[t].s.length);
+    var avD=Math.round(byTime[t].d.reduce(function(a,b){return a+b;},0)/byTime[t].d.length);
+    var rt=bpClass(avS,avD);
+    return '<div class="st-row"><span>'+t+'</span><span style="font-weight:700;color:'+(rt?rt.col:MU)+'">'+avS+'/'+avD+' mmHg</span></div>';
+  }).join('');
+
+  // Klassifikation
+  var cats={opt:0,norm:0,hochn:0,g1:0,g2:0,g3:0};
+  entries.forEach(function(e){
+    if(e.bpS<120&&e.bpD<80) cats.opt++;
+    else if(e.bpS<130&&e.bpD<85) cats.norm++;
+    else if(e.bpS<140&&e.bpD<90) cats.hochn++;
+    else if(e.bpS<160&&e.bpD<100) cats.g1++;
+    else if(e.bpS<180&&e.bpD<110) cats.g2++;
+    else cats.g3++;
+  });
+  function catBar2(label,count,color){
+    if(!count)return'';
+    var pct=Math.round(count/entries.length*100);
+    return '<div style="margin:4px 0"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span>'+label+'</span><span style="font-weight:700;color:'+color+'">'+count+'× ('+pct+'%)</span></div><div style="height:5px;background:var(--s3);border-radius:3px"><div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:3px"></div></div></div>';
+  }
+
+  sEl.innerHTML='<div style="display:flex;gap:8px;margin-bottom:10px">'
+    +'<div style="flex:1;text-align:center;background:var(--s3);border-radius:8px;padding:8px 4px"><div style="font-size:22px;font-weight:800;color:'+(r?r.col:MU)+';letter-spacing:-1px">'+aS+'/'+aD+'</div><div style="font-size:11px;color:'+MU+'">Ø mmHg · '+(r?r.lbl:'')+'</div></div>'
+    +(aP?'<div style="text-align:center;background:var(--s3);border-radius:8px;padding:8px 12px"><div style="font-size:22px;font-weight:800;color:'+AC+';letter-spacing:-1px">'+aP+'</div><div style="font-size:11px;color:'+MU+'">Ø Puls</div></div>':'')
+    +'</div>'
+    +'<div class="st-row"><span style="font-size:12px">Bereich Systolisch</span><span style="font-weight:700">'+minS+' – '+maxS+' mmHg</span></div>'
+    +'<div class="st-row"><span style="font-size:12px">Bereich Diastolisch</span><span style="font-weight:700">'+minD+' – '+maxD+' mmHg</span></div>'
+    +'<div class="card-title" style="margin-top:10px">Ø nach Tageszeit</div>'
+    +timeRows
+    +'<div class="card-title" style="margin-top:10px">Klassifikation (ESC/ESH 2023)</div>'
+    +catBar2('Optimal (< 120/80)',cats.opt,G)
+    +catBar2('Normal (120–129 / 80–84)',cats.norm,G)
+    +catBar2('Hochnormal (130–139 / 85–89)',cats.hochn,W)
+    +catBar2('Grad 1 (140–159 / 90–99)',cats.g1,B)
+    +catBar2('Grad 2 (160–179 / 100–109)',cats.g2,B)
+    +catBar2('Grad 3 (≥ 180 / ≥ 110)',cats.g3,B)
+    +'<div style="font-size:11px;color:var(--muted);margin-top:8px">Quelle: ESC/ESH Hypertonie-Leitlinie 2023. Eine Diagnose erfordert mehrere Messungen an verschiedenen Tagen durch einen Arzt.</div>';
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
